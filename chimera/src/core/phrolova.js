@@ -8,6 +8,9 @@
  * or die trying (usually the latter)
  */
 
+// Load environment variables first, before coffee
+require('dotenv').config();
+
 const fs = require('fs').promises;
 const { createReadStream } = require('fs');
 const { pipeline } = require('stream/promises');
@@ -174,6 +177,9 @@ class PhrolovaTheBrilliant {
       const chunks = [];
       let lineTracker = 1;
       
+      // Save reference to 'this' for use inside renderer
+      const selfReference = this;
+      
       // Custom renderer to capture everything
       const rendererOfTruth = {
         heading(text, level) {
@@ -198,15 +204,17 @@ class PhrolovaTheBrilliant {
         },
         
         code(code, language) {
+          // Ensure code is a string
+          const codeStr = String(code || '');
           chunks.push({
             type: 'code',
             language: language || 'unknown',
-            code,
+            code: codeStr,
             line: lineTracker,
             // Check if this looks like it wants to be interactive
-            wantsToParty: this.looksInteractive(code, language)
+            wantsToParty: selfReference.looksInteractive(codeStr, language)
           });
-          lineTracker += code.split('\n').length;
+          lineTracker += codeStr.split('\n').length;
           return '';
         },
         
@@ -226,7 +234,7 @@ class PhrolovaTheBrilliant {
             text,
             line: lineTracker,
             // Check if it's a special note/warning/tip
-            personality: this.detectBlockquotePersonality(text)
+            personality: selfReference.detectBlockquotePersonality(text)
           });
           return '';
         }
@@ -323,15 +331,32 @@ class PhrolovaTheBrilliant {
     return chunks.map((chunk, index) => {
       const clusterId = `cluster_${generateMagicalId()}`;
       
+      // Extract actual text content from chunk
+      let content = '';
+      if (typeof chunk.text === 'string') {
+        content = chunk.text;
+      } else if (typeof chunk.code === 'string') {
+        content = chunk.code;
+      } else if (typeof chunk.body === 'string') {
+        content = chunk.body;
+      } else if (chunk.text && chunk.text.text) {
+        content = chunk.text.text;  // For nested text objects
+      } else if (chunk.text && chunk.text.raw) {
+        content = chunk.text.raw;  // For raw text
+      } else {
+        content = JSON.stringify(chunk.text || chunk);  // Fallback
+      }
+      
       return {
         id: clusterId,
         type: this.guessClusterType(chunk.type),
-        content: chunk.text || chunk.code || chunk.body || '',
+        content: content,
         metadata: {
           language: chunk.language,
           isInteractive: chunk.wantsToParty || false,
           personality: chunk.personality,
           line: chunk.line,
+          level: chunk.level || null,
           confidence: 'low', // we're being honest here
           parsedBy: 'coffee-and-regex'
         }
@@ -356,7 +381,7 @@ class PhrolovaTheBrilliant {
         {
           content: prophecy.content || originalChunk.text || '',
           raw: originalChunk.raw || prophecy.content || '',
-          level: prophecy.level || originalChunk.level,
+          level: prophecy.metadata?.level || prophecy.level || originalChunk.level,
           language: prophecy.metadata?.language || originalChunk.language,
           lineStart: prophecy.metadata?.line || originalChunk.line,
           isInteractive: prophecy.metadata?.isInteractive || false,
@@ -375,25 +400,28 @@ class PhrolovaTheBrilliant {
    * Detects if a code block wants to party (be interactive)
    */
   looksInteractive(code, language) {
+    // Ensure code is a string
+    const codeStr = String(code || '');
+    
     // JavaScript that looks runnable
     if (language === 'javascript' || language === 'js') {
-      return code.includes('console.log') || 
-             code.includes('alert') || 
-             code.includes('document.');
+      return codeStr.includes('console.log') || 
+             codeStr.includes('alert') || 
+             codeStr.includes('document.');
     }
     
     // HTML with potential interactivity
     if (language === 'html') {
-      return code.includes('<script>') || 
-             code.includes('onclick') || 
-             code.includes('<button');
+      return codeStr.includes('<script>') || 
+             codeStr.includes('onclick') || 
+             codeStr.includes('<button');
     }
     
     // Python that might want a REPL
     if (language === 'python') {
-      return code.includes('print(') || 
-             code.includes('input(') ||
-             code.length < 500; // Short enough to demo
+      return codeStr.includes('print(') || 
+             codeStr.includes('input(') ||
+             codeStr.length < 500; // Short enough to demo
     }
     
     return false;
@@ -403,7 +431,7 @@ class PhrolovaTheBrilliant {
    * Detects special blockquote personalities (warnings, notes, tips)
    */
   detectBlockquotePersonality(text) {
-    const textLower = text.toLowerCase();
+    const textLower = String(text || '').toLowerCase();
     
     if (textLower.startsWith('warning:') || textLower.startsWith('⚠')) {
       return 'warning';

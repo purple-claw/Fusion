@@ -154,17 +154,31 @@ class DocumentManifest {
     this.clusters.forEach(cluster => {
       if (cluster.type === ClusterType.HEADING) {
         // Create section hierarchy based on heading levels
-        while (sectionStack.length > cluster.level) {
+        const level = cluster.level || 1;
+        
+        // Ensure we don't pop the root
+        while (sectionStack.length > level && sectionStack.length > 1) {
           sectionStack.pop();
         }
         
+        // Ensure stack is not empty
+        if (sectionStack.length === 0) {
+          sectionStack.push(root);
+        }
+        
         const section = new ContentCluster(ClusterType.SECTION, {
-          level: cluster.level,
+          level: level,
           content: cluster.content
         });
         
         section.addChild(cluster);
-        sectionStack[sectionStack.length - 1].addChild(section);
+        
+        // Get parent section (last item in stack)
+        const parentSection = sectionStack[sectionStack.length - 1];
+        if (parentSection) {
+          parentSection.addChild(section);
+        }
+        
         sectionStack.push(section);
         currentSection = section;
       } else {

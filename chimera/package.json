@@ -1,37 +1,20 @@
 {
   "name": "chimera",
   "version": "1.0.0",
-  "description": "",
+  "description": "Project Chimera - The Intelligent Content Parser & Enrichment Engine",
   "main": "index.js",
   "directories": {
     "example": "examples",
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test-phrolova.js",
+    "test:phrolova": "node test-phrolova.js",
+    "test:debug": "DEBUG=true node test-phrolova.js",
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "autoprefixer": "^10.4.21",
-    "chalk": "^4.1.2",
-    "cheerio": "^1.1.2",
-    "dotenv": "^17.2.3",
-    "jsdom": "^22.1.0",
-    "marked": "^16.4.0",
-    "openai": "^4.20.1",
-    "p-queue": "^6.6.2",
-    "postcss": "^8.5.6",
-    "prismjs": "^1.30.0",
-    "stream-json": "^1.9.1",
-    "tailwindcss": "^4.1.14",
-    "uuid": "^13.0.0",
-    "winston": "^3.18.3"
-  },
-  "devDependencies": {
-    "@types/node": "^24.8.1",
-    "nodemon": "^3.1.10",
-    "typescript": "^5.9.3"
-  }
+  "keywords": ["parser", "markdown", "html", "chimera", "phrolova"],
+  "author": "The Caffeine-Fueled Developer",
+  "license": "ISC"
 }
